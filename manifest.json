@@ -1,0 +1,10 @@
+{
+    "display_name": "LRU Key Rotation",
+    "loading_order": 100,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "author": "Ama-10",
+    "version": "1.0.0",
+    "homePage": ""
+}
