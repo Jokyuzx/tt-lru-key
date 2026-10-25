@@ -44,6 +44,27 @@ export function pickLeastRecentlyUsed(secrets, lastUsed) {
 }
 
 /**
+ * Keep only the secrets meant for this endpoint. The Custom source shares one
+ * key pool (api_key_custom) across all endpoints, so keys are told apart by a
+ * label prefix configured per host.
+ * @param {{id: string, label?: string}[]} secrets
+ * @param {string} endpoint e.g. payload.custom_url
+ * @param {Record<string, string>} prefixByHost host -> label prefix
+ * @returns {{id: string, label?: string}[]|null} null when the host is unknown or the URL is invalid
+ */
+export function filterByEndpoint(secrets, endpoint, prefixByHost) {
+    let host;
+    try {
+        host = new URL(endpoint).host;
+    } catch {
+        return null;
+    }
+    if (!prefixByHost || !Object.hasOwn(prefixByHost, host)) return null;
+    const prefix = prefixByHost[host];
+    return secrets.filter((s) => typeof s?.label === 'string' && s.label.startsWith(prefix));
+}
+
+/**
  * Drop timestamps of secrets that no longer exist.
  * @param {Record<string, number>} lastUsed
  * @param {Record<string, {id: string}[]|null>} secretState

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { pickLeastRecentlyUsed, pruneLastUsed, secretKeyForPayload } from '../lru.js';
+import { filterByEndpoint, pickLeastRecentlyUsed, pruneLastUsed, secretKeyForPayload } from '../lru.js';
 
 const sources = { OPENAI: 'openai', CLAUDE: 'claude', CUSTOM: 'custom', VERTEXAI: 'vertexai' };
 const keys = {
@@ -41,4 +41,36 @@ test('prunes deleted keys', () => {
     const lastUsed = { a: 1, gone: 2 };
     pruneLastUsed(lastUsed, { api_key_custom: [{ id: 'a' }], api_key_claude: null });
     assert.deepEqual(lastUsed, { a: 1 });
+});
+
+const pool = [
+    { id: 'g1', label: 'GG-1' },
+    { id: 'g2', label: 'GG-2' },
+    { id: 'y1', label: 'yy-main' },
+    { id: 'n1' },
+];
+const prefixes = { 'gcli.ggchan.dev': 'GG-' };
+
+test('filterByEndpoint: host hit keeps only prefixed labels', () => {
+    const out = filterByEndpoint(pool, 'https://gcli.ggchan.dev/v1', prefixes);
+    assert.deepEqual(out.map((s) => s.id), ['g1', 'g2']);
+});
+
+test('filterByEndpoint: unknown host returns null', () => {
+    assert.equal(filterByEndpoint(pool, 'https://www.yyapi.cloud/v1', prefixes), null);
+});
+
+test('filterByEndpoint: invalid URL returns null', () => {
+    assert.equal(filterByEndpoint(pool, 'not a url', prefixes), null);
+    assert.equal(filterByEndpoint(pool, '', prefixes), null);
+    assert.equal(filterByEndpoint(pool, undefined, prefixes), null);
+});
+
+test('filterByEndpoint: secrets without label are skipped', () => {
+    const out = filterByEndpoint([{ id: 'n1' }, { id: 'n2', label: null }, { id: 'g1', label: 'GG-1' }], 'https://gcli.ggchan.dev/v1', prefixes);
+    assert.deepEqual(out.map((s) => s.id), ['g1']);
+});
+
+test('filterByEndpoint: host match only, no prefix match gives empty array', () => {
+    assert.deepEqual(filterByEndpoint([{ id: 'y1', label: 'yy-main' }], 'https://gcli.ggchan.dev/v1', prefixes), []);
 });
